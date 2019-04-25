@@ -116,7 +116,7 @@ func TestGetTokenShouldHasRequiredBody(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	token := sms.NewToken(&sms.Config{
+	token := sms.NewToken(sms.Config{
 		APIKey:       apiKey,
 		SecretKey:    secretKey,
 		BaseURL:      ts.URL,
@@ -137,7 +137,7 @@ func TestGetTokenShouldUseCorrespondingURL(t *testing.T) {
 		got = r.URL.Path
 	}))
 	defer ts.Close()
-	_, _ = sms.NewToken(&sms.Config{
+	_, _ = sms.NewToken(sms.Config{
 		BaseURL: ts.URL,
 	}).Get()
 
@@ -160,7 +160,7 @@ func TestGetTokenShouldReturnTokenFromAPIResponse(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	tk := sms.NewToken(&sms.Config{BaseURL: ts.URL})
+	tk := sms.NewToken(sms.Config{BaseURL: ts.URL})
 	got, _ := tk.Get()
 	if got != token {
 		t.Errorf("expected token '%s', got '%s'", token, got)
@@ -179,7 +179,7 @@ func TestGetTokenShouldReturnErrorWhenKeysAreInvalid(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(&data)
 	}))
 	defer ts.Close()
-	tk := sms.NewToken(&sms.Config{BaseURL: ts.URL, DisableCache: true})
+	tk := sms.NewToken(sms.Config{BaseURL: ts.URL, DisableCache: true})
 	token, err := tk.Get()
 	if token != "" || err == nil {
 		t.Errorf("expected empty token and error")
@@ -202,12 +202,12 @@ func TestGetTokenShouldCacheTokenUntilTimedOut(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	tk1 := sms.NewToken(&sms.Config{BaseURL: ts.URL, DisableCache: false})
+	tk1 := sms.NewToken(sms.Config{BaseURL: ts.URL, DisableCache: false})
 	t1, _ := tk1.Get()
 
 	times++
 
-	tk2 := sms.NewToken(&sms.Config{BaseURL: ts.URL})
+	tk2 := sms.NewToken(sms.Config{BaseURL: ts.URL})
 	t2, _ := tk2.Get()
 
 	if t1 != t2 {
@@ -230,10 +230,24 @@ func TestGetTokenShouldHandlerRaceCondition(t *testing.T) {
 	wg.Add(10)
 	for i := 0; i < 10; i++ {
 		go func() {
-			tk := sms.NewToken(&sms.Config{BaseURL: ts.URL, DisableCache: true})
+			tk := sms.NewToken(sms.Config{BaseURL: ts.URL, DisableCache: true})
 			_, _ = tk.Get()
 			wg.Done()
 		}()
 	}
 	wg.Wait()
+}
+
+func TestIntegrationGetCredit(t *testing.T) {
+	t.Skip()
+	token := sms.NewToken(sms.Config{
+		APIKey:    "d4b9edbc234a16bfe6b5e9bd",
+		SecretKey: "T=^V=tNGm&US73zH",
+	})
+	c := sms.NewBulkSMSClient(token, sms.DefaultBulkURL)
+	credit, err := c.GetCredit()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Your credit is: %d", credit)
 }
