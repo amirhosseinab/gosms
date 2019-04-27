@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -36,6 +37,7 @@ type (
 	// It uses the token that provides by the Token.Get() method.
 	BulkSMSProvider interface {
 		GetCredit() (int, error)
+		SendVerificationCode(mobile, code string) (string, error)
 	}
 
 	// TokenProvider is used to fetch the token from the server.
@@ -53,16 +55,22 @@ type (
 		Token   TokenProvider
 	}
 
+	tokenResult struct {
+		TokenKey     string `json:"TokenKey"`
+		IsSuccessful bool   `json:"IsSuccessful"`
+		Message      string `json:"Message"`
+	}
+
 	creditResult struct {
 		Credit       float32 `json:"Credit"`
 		IsSuccessful bool    `json:"IsSuccessful"`
 		Message      string  `json:"Message"`
 	}
 
-	tokenResult struct {
-		TokenKey     string `json:"TokenKey"`
-		IsSuccessful bool   `json:"IsSuccessful"`
-		Message      string `json:"Message"`
+	verificationCodeResult struct {
+		VerificationCodeId float64 `json:"VerificationCodeId"`
+		IsSuccessful       bool    `json:"IsSuccessful"`
+		Message            string  `json:"Message"`
 	}
 )
 
@@ -122,12 +130,15 @@ func (t *Token) Get() (string, error) {
 func (b *BulkSMS) GetCredit() (int, error) {
 	url := b.BaseURL + "/credit"
 	r, _ := http.NewRequest(http.MethodGet, url, nil)
-	token, _ := b.Token.Get()
+	token, err := b.Token.Get()
+	if err != nil {
+		return 0, err
+	}
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("x-sms-ir-secure-token", token)
 	resp, _ := http.DefaultClient.Do(r)
 	data := creditResult{}
-	err := json.NewDecoder(resp.Body).Decode(&data)
+	err = json.NewDecoder(resp.Body).Decode(&data)
 	if err != nil {
 		return 0, err
 	}
@@ -137,4 +148,29 @@ func (b *BulkSMS) GetCredit() (int, error) {
 		return int(data.Credit), nil
 	}
 	return 0, errors.New("invalid token")
+}
+
+func (b *BulkSMS) SendVerificationCode(mobile, code string) (string, error) {
+	url := b.BaseURL + "/VerificationCode"
+	body := struct {
+		MobileNumber string `json:"MobileNumber"`
+		Code         string `json:"Code"`
+	}{
+		MobileNumber: mobile,
+		Code:         code,
+	}
+
+	bs, _ := json.Marshal(&body)
+	r, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(bs))
+	token, _ := b.Token.Get()
+	r.Header.Add("Content-Type", "application/json")
+	r.Header.Add("x-sms-ir-secure-token", token)
+	resp, _ := http.DefaultClient.Do(r)
+
+	result := verificationCodeResult{}
+	_ = json.NewDecoder(resp.Body).Decode(&result)
+	if result.IsSuccessful {
+		return strconv.FormatFloat(result.VerificationCodeId, 'f', 0, 64), nil
+	}
+	return "0", errors.New("invalid mobile")
 }

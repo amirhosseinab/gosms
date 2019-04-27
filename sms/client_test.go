@@ -238,16 +238,112 @@ func TestGetTokenShouldHandlerRaceCondition(t *testing.T) {
 	wg.Wait()
 }
 
-func TestIntegrationGetCredit(t *testing.T) {
-	t.Skip()
-	token := sms.NewToken(sms.Config{
-		APIKey:    "d4b9edbc234a16bfe6b5e9bd",
-		SecretKey: "T=^V=tNGm&US73zH",
-	})
-	c := sms.NewBulkSMSClient(token, sms.DefaultBulkURL)
-	credit, err := c.GetCredit()
-	if err != nil {
-		t.Fatal(err)
+func TestBulkSMS_SendVerificationCodeShouldUseAppropriateHeaders(t *testing.T) {
+	fakeToken := "fake_token"
+	gotToken := ""
+	gotContentType := ""
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotToken = r.Header.Get("x-sms-ir-secure-token")
+		gotContentType = r.Header.Get("Content-Type")
+	}))
+	defer ts.Close()
+
+	token := createFakeToken(fakeToken)
+	c := sms.NewBulkSMSClient(token, ts.URL)
+	_, _ = c.SendVerificationCode("", "")
+	if gotToken != fakeToken {
+		t.Errorf("expected '%s', got '%s'", fakeToken, gotToken)
 	}
-	t.Logf("Your credit is: %d", credit)
+	if gotContentType != "application/json" {
+		t.Errorf("expected '%s', got '%s'", "application/json", gotContentType)
+	}
+}
+
+func TestBulkSMS_SendVerificationCodeShouldUseAppropriateURL(t *testing.T) {
+	got := ""
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Path
+	}))
+	defer ts.Close()
+
+	token := createFakeToken("")
+	c := sms.NewBulkSMSClient(token, ts.URL)
+	_, _ = c.SendVerificationCode("", "")
+	if strings.ToLower(got) != "/verificationcode" {
+		t.Errorf("expected '%s', got '%s'", "/VerificationCode", got)
+	}
+}
+
+func TestBulkSMS_SendVerificationCodeShouldHasBody(t *testing.T) {
+	mobile := "fake_mobile"
+	code := "fake_code"
+	type data struct {
+		MobileNumber string `json:"MobileNumber"`
+		Code         string `json:"Code"`
+	}
+
+	d := data{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&d)
+		defer r.Body.Close()
+	}))
+	defer ts.Close()
+
+	token := createFakeToken("")
+	c := sms.NewBulkSMSClient(token, ts.URL)
+	_, _ = c.SendVerificationCode(mobile, code)
+
+	if d.MobileNumber != mobile {
+		t.Errorf("Expected Mobile: '%s', got '%s'", mobile, d.MobileNumber)
+	}
+	if d.Code != code {
+		t.Errorf("Expected Code: '%s', got '%s'", code, d.Code)
+	}
+}
+
+func TestBulkSMS_SendVerificationCodeShouldReturnErrorForFailedRequests(t *testing.T) {
+	validMobile := "by_valid_mobile"
+	invalidMobile := "by_invalid_mobile"
+	validVId := "53160177228"
+	td := []struct {
+		mobile  string
+		vId     string
+		error   error
+		message string
+	}{
+		{mobile: validMobile, vId: validVId, error: nil, message: "valid mobile should not return error"},
+		{mobile: invalidMobile, vId: "0", error: errors.New("invalid mobile"), message: "invalid mobile should return error"},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		type data struct {
+			VerificationCodeId float64 `json:"VerificationCodeId"`
+			IsSuccessful       bool    `json:"IsSuccessful"`
+		}
+		var d data
+
+		body := struct{ MobileNumber string `json:"MobileNumber"` }{}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+
+		if body.MobileNumber == validMobile {
+			v, _ := strconv.ParseFloat(validVId, 64)
+			d = data{VerificationCodeId: v, IsSuccessful: true}
+		}
+		if body.MobileNumber == invalidMobile {
+			d = data{VerificationCodeId: 0.0, IsSuccessful: false}
+		}
+		_ = json.NewEncoder(w).Encode(&d)
+	}))
+
+	defer ts.Close()
+
+	for _, d := range td {
+		t.Run(d.mobile, func(t *testing.T) {
+			c := sms.NewBulkSMSClient(createFakeToken("fake_token"), ts.URL)
+			vId, err := c.SendVerificationCode(d.mobile, "fake_code")
+			if vId != d.vId || (err != nil && err.Error() != d.error.Error()) {
+				t.Error(d.message)
+			}
+		})
+	}
 }
