@@ -32,12 +32,10 @@ type (
 	}
 
 	// BulkSMSProvider exposes the methods of bulk SMS system.
-	//
-	// GetCredit fetch the amount of the SMS count that remains on the account.
-	// It uses the token that provides by the Token.Get() method.
 	BulkSMSProvider interface {
 		GetCredit() (int, error)
 		SendVerificationCode(mobile, code string) (string, error)
+		SendByTemplate(mobile string, templateId int, params map[string]string) (string, error)
 	}
 
 	// TokenProvider is used to fetch the token from the server.
@@ -74,7 +72,7 @@ type (
 	}
 )
 
-// NewBulkSMSClient create a value that handle all requests for bulk SMS system.
+// NewBulkSMSClient creates a value that handles all requests for bulk SMS system.
 func NewBulkSMSClient(token TokenProvider, url string) BulkSMSProvider {
 	return &BulkSMS{
 		BaseURL: url,
@@ -82,7 +80,7 @@ func NewBulkSMSClient(token TokenProvider, url string) BulkSMSProvider {
 	}
 }
 
-// NewToken provides a value for fetching token from the server.
+// NewToken provides value for fetching token from the server.
 func NewToken(config Config) TokenProvider {
 	url := config.BaseURL
 	if url == "" {
@@ -95,7 +93,7 @@ func NewToken(config Config) TokenProvider {
 }
 
 // Get method fetches token from the server.
-// It is thread safe and handles the caching mechanism by default to prevent unnecessary requests.
+// It is thread-safe and handles the caching mechanism by default to prevent unnecessary requests.
 func (t *Token) Get() (string, error) {
 	if !t.Config.DisableCache && (time.Now().Sub(tokenTimestamp) < TokenTimeOut) {
 		return cachedToken, nil
@@ -125,7 +123,7 @@ func (t *Token) Get() (string, error) {
 	return "", errors.New("invalid API key or secret key")
 }
 
-// GetCredit fetch the amount of the SMS count that remains on the account.
+// GetCredit fetches the amount of the SMS count that remains on the account.
 // It uses the token that provides by the Token.Get() method.
 func (b *BulkSMS) GetCredit() (int, error) {
 	url := b.BaseURL + "/credit"
@@ -150,6 +148,7 @@ func (b *BulkSMS) GetCredit() (int, error) {
 	return 0, errors.New("invalid token")
 }
 
+// SendVerificationCode sends a value(code) with default message template to the provided mobile number.
 func (b *BulkSMS) SendVerificationCode(mobile, code string) (string, error) {
 	url := b.BaseURL + "/VerificationCode"
 	body := struct {
@@ -173,4 +172,41 @@ func (b *BulkSMS) SendVerificationCode(mobile, code string) (string, error) {
 		return strconv.FormatFloat(result.VerificationCodeId, 'f', 0, 64), nil
 	}
 	return "0", errors.New("invalid mobile")
+}
+
+// SendByTemplate sends a bunch of key-value pair of data with a provided template(TemplateId) to the given mobile number.
+func (b *BulkSMS) SendByTemplate(mobile string, templateId int, params map[string]string) (string, error) {
+	url := b.BaseURL + "/UltraFastSend"
+	type param struct {
+		Parameter      string `json:"Parameter"`
+		ParameterValue string `json:"ParameterValue"`
+	}
+	body := struct {
+		Mobile         string   `json:"Mobile"`
+		TemplateId     int      `json:"TemplateId"`
+		ParameterArray []*param `json:"ParameterArray"`
+	}{
+		Mobile:     mobile,
+		TemplateId: templateId,
+	}
+
+	if params != nil {
+		for key, value := range params {
+			body.ParameterArray = append(body.ParameterArray, &param{Parameter: key, ParameterValue: value})
+		}
+	}
+	bs, _ := json.Marshal(&body)
+
+	r, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(bs))
+	token, _ := b.Token.Get()
+	r.Header.Add("Content-Type", "application/json")
+	r.Header.Add("x-sms-ir-secure-token", token)
+	resp, _ := http.DefaultClient.Do(r)
+
+	result := verificationCodeResult{}
+	_ = json.NewDecoder(resp.Body).Decode(&result)
+	if result.IsSuccessful {
+		return strconv.FormatFloat(result.VerificationCodeId, 'f', 0, 64), nil
+	}
+	return "0", errors.New("invalid data")
 }

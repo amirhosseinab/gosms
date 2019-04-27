@@ -16,7 +16,7 @@ Modules| APIs
 UserInfo| <ul><li>[x] `GetToken`</li><li>[x] `Credit`</li><li>[ ] `SMSLine`</li></ul>
 Send-Receive|<ul><li>[ ] `MessageSend`</li><li>[ ] `MessageSend (ReportByDate)`</li><li>[ ] `MessageSend (ReportById)`</li><li>[ ] `MessageSend (ReportByBachkey)`</li><li>[ ] `ReceiveMessage (ByLastID)`</li><li>[ ] `ReceiveMessage (ByDate)`</li></ul>
 CustomerClub|<ul><li>[ ] `CustomerClubContact (AddContact)`</li><li>[ ] `CustomerClubContact (UpdateContact)`</li><li>[ ] `CustomerClubContact (GetCategories)`</li><li>[ ] `CustomerClubContact (GetContactsByCategory&ById)`</li><li>[ ] `CustomerClubContact (GetAllContactsByPageID)`</li><li>[ ] `CustomerClub (Send)`</li><li>[ ] `CustomerClub (AddContact&Send)`</li><li>[ ] `CustomerClub (SendToCategories)`</li><li>[ ] `CustomerClub (GetSendMessagesByPagination)`</li><li>[ ] `CustomerClub (GetSendMessagesByPaginationAndLastId)`</li><li>[ ] `CustomerClub (DeleteContactCustomerClub)`</li></ul>
-Verification|<ul><li>[x] `VerificationCode`</li><li>[ ] `UltraFastSend`</li><li>[ ] `MessageReport`</li></ul>
+Verification|<ul><li>[x] `VerificationCode`</li><li>[x] `UltraFastSend`</li><li>[ ] `MessageReport`</li></ul>
 
 ---
 ## Contribution

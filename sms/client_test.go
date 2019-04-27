@@ -347,3 +347,75 @@ func TestBulkSMS_SendVerificationCodeShouldReturnErrorForFailedRequests(t *testi
 		})
 	}
 }
+
+func TestBulkSMS_SendByTemplateShouldHasRequiredHeaders(t *testing.T) {
+	fakeToken := "fake_token"
+	gotToken := ""
+	gotContentType := ""
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotToken = r.Header.Get("x-sms-ir-secure-token")
+		gotContentType = r.Header.Get("Content-Type")
+	}))
+	defer ts.Close()
+
+	token := createFakeToken(fakeToken)
+	c := sms.NewBulkSMSClient(token, ts.URL)
+	_, _ = c.SendByTemplate("", 0, nil)
+	if gotToken != fakeToken {
+		t.Errorf("expected '%s', got '%s'", fakeToken, gotToken)
+	}
+	if gotContentType != "application/json" {
+		t.Errorf("expected '%s', got '%s'", "application/json", gotContentType)
+	}
+}
+
+func TestBulkSMS_SendByTemplateShouldSendsRequestBody(t *testing.T) {
+	mobile := "fake_mobile"
+	templateId := 123
+	params := map[string]string{"param1": "value1", "param2": "value2"}
+
+	type data struct {
+		Mobile         string `json:"Mobile"`
+		TemplateId     int    `json:"TemplateId"`
+		ParameterArray []struct {
+			Parameter      string `json:"Parameter"`
+			ParameterValue string `json:"ParameterValue"`
+		} `json:"ParameterArray"`
+	}
+
+	d := data{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&d)
+		defer r.Body.Close()
+	}))
+	defer ts.Close()
+
+	token := createFakeToken("fake_token")
+	c := sms.NewBulkSMSClient(token, ts.URL)
+	_, _ = c.SendByTemplate(mobile, templateId, params)
+
+	if d.Mobile != mobile {
+		t.Errorf("Expected Mobile: '%s', got '%s'", mobile, d.Mobile)
+	}
+	if d.TemplateId != templateId {
+		t.Errorf("Expected TemplateId: '%d', got '%d'", templateId, d.TemplateId)
+	}
+
+	if len(d.ParameterArray) != len(params) {
+		t.Fatalf("Expected paramters count: '%d', got '%d'", len(params), len(d.ParameterArray))
+	}
+
+	if d.ParameterArray[0].Parameter != "param1" {
+		t.Errorf("Expected paramter 1: '%s', got '%s'", "param1", d.ParameterArray[0].Parameter)
+	}
+	if d.ParameterArray[0].ParameterValue != "value1" {
+		t.Errorf("Expected paramter value 1: '%s', got '%s'", "value1", d.ParameterArray[0].ParameterValue)
+	}
+
+	if d.ParameterArray[1].Parameter != "param2" {
+		t.Errorf("Expected paramter 2: '%s', got '%s'", "param2", d.ParameterArray[1].Parameter)
+	}
+	if d.ParameterArray[1].ParameterValue != "value2" {
+		t.Errorf("Expected paramter value 2: '%s', got '%s'", "value2", d.ParameterArray[1].ParameterValue)
+	}
+}
