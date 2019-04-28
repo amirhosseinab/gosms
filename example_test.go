@@ -1,17 +1,17 @@
-package sms_test
+package gosms_test
 
 import (
-	"github.com/amirhosseinab/go-sms-ir/sms"
+	"github.com/amirhosseinab/gosms"
 	"log"
 )
 
 func ExampleBulkSMS_GetCredit() {
-	tp := sms.NewToken(sms.Config{
+	tp := gosms.NewToken(gosms.Config{
 		APIKey:    "YOUR_API_KEY",
 		SecretKey: "YOUR_SECRET_KEY",
 	})
 
-	client := sms.NewBulkSMSClient(tp, sms.DefaultBulkURL)
+	client := gosms.NewBulkSMSClient(tp, gosms.DefaultBulkURL)
 
 	credit, err := client.GetCredit()
 	if err != nil {
@@ -22,12 +22,12 @@ func ExampleBulkSMS_GetCredit() {
 }
 
 func ExampleBulkSMS_SendVerificationCode() {
-	token := sms.NewToken(sms.Config{
+	token := gosms.NewToken(gosms.Config{
 		APIKey:    "YOUR_API_KEY",
 		SecretKey: "YOUR_SECRET_KEY",
 	})
 
-	client := sms.NewBulkSMSClient(token, sms.DefaultBulkURL)
+	client := gosms.NewBulkSMSClient(token, gosms.DefaultBulkURL)
 
 	vId, err := client.SendVerificationCode("09121234567", "123456")
 	if err != nil {
@@ -39,12 +39,12 @@ func ExampleBulkSMS_SendVerificationCode() {
 }
 
 func ExampleBulkSMS_SendByTemplate() {
-	token := sms.NewToken(sms.Config{
+	token := gosms.NewToken(gosms.Config{
 		APIKey:    "YOUR_API_KEY",
 		SecretKey: "YOUR_SECRET_KEY",
 	})
 
-	client := sms.NewBulkSMSClient(token, sms.DefaultBulkURL)
+	client := gosms.NewBulkSMSClient(token, gosms.DefaultBulkURL)
 
 	vId, err := client.SendByTemplate("09121234567", 1234, map[string]string{"VerificationCode": "9999"})
 	if err != nil {
