@@ -1,9 +1,9 @@
-package sms_test
+package gosms_test
 
 import (
 	"encoding/json"
 	"errors"
-	"github.com/amirhosseinab/go-sms-ir/sms"
+	"github.com/amirhosseinab/gosms"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -22,7 +22,7 @@ func TestGetCreditShouldUseToken(t *testing.T) {
 	defer ts.Close()
 
 	token := createFakeToken(fakeToken)
-	c := sms.NewBulkSMSClient(token, ts.URL)
+	c := gosms.NewBulkSMSClient(token, ts.URL)
 	c.GetCredit()
 	if got != fakeToken {
 		t.Errorf("expected '%s', got '%s'", fakeToken, got)
@@ -37,7 +37,7 @@ func TestGetCreditShouldUseCorrespondingURL(t *testing.T) {
 	defer ts.Close()
 
 	token := createFakeToken("")
-	c := sms.NewBulkSMSClient(token, ts.URL)
+	c := gosms.NewBulkSMSClient(token, ts.URL)
 	c.GetCredit()
 	if strings.ToLower(got) != "/credit" {
 		t.Errorf("expected '%s', got '%s'", "/credit", got)
@@ -52,7 +52,7 @@ func TestGetCreditShouldHasJSONContentTypeHeader(t *testing.T) {
 	defer ts.Close()
 
 	token := createFakeToken("")
-	c := sms.NewBulkSMSClient(token, ts.URL)
+	c := gosms.NewBulkSMSClient(token, ts.URL)
 	c.GetCredit()
 	if strings.ToLower(got) != "application/json" {
 		t.Errorf("expected '%s', got '%s'", "application/json", got)
@@ -93,7 +93,7 @@ func TestGetCreditReturnValue(t *testing.T) {
 
 	for _, d := range td {
 		t.Run(d.token, func(t *testing.T) {
-			c := sms.NewBulkSMSClient(createFakeToken(d.token), ts.URL)
+			c := gosms.NewBulkSMSClient(createFakeToken(d.token), ts.URL)
 			credit, err := c.GetCredit()
 			if credit != d.credit || (err != nil && err.Error() != d.error.Error()) {
 				t.Error(d.message)
@@ -116,7 +116,7 @@ func TestGetTokenShouldHasRequiredBody(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	token := sms.NewToken(sms.Config{
+	token := gosms.NewToken(gosms.Config{
 		APIKey:       apiKey,
 		SecretKey:    secretKey,
 		BaseURL:      ts.URL,
@@ -137,7 +137,7 @@ func TestGetTokenShouldUseCorrespondingURL(t *testing.T) {
 		got = r.URL.Path
 	}))
 	defer ts.Close()
-	_, _ = sms.NewToken(sms.Config{
+	_, _ = gosms.NewToken(gosms.Config{
 		BaseURL: ts.URL,
 	}).Get()
 
@@ -160,7 +160,7 @@ func TestGetTokenShouldReturnTokenFromAPIResponse(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	tk := sms.NewToken(sms.Config{BaseURL: ts.URL})
+	tk := gosms.NewToken(gosms.Config{BaseURL: ts.URL})
 	got, _ := tk.Get()
 	if got != token {
 		t.Errorf("expected token '%s', got '%s'", token, got)
@@ -179,7 +179,7 @@ func TestGetTokenShouldReturnErrorWhenKeysAreInvalid(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(&data)
 	}))
 	defer ts.Close()
-	tk := sms.NewToken(sms.Config{BaseURL: ts.URL, DisableCache: true})
+	tk := gosms.NewToken(gosms.Config{BaseURL: ts.URL, DisableCache: true})
 	token, err := tk.Get()
 	if token != "" || err == nil {
 		t.Errorf("expected empty token and error")
@@ -202,12 +202,12 @@ func TestGetTokenShouldCacheTokenUntilTimedOut(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	tk1 := sms.NewToken(sms.Config{BaseURL: ts.URL, DisableCache: false})
+	tk1 := gosms.NewToken(gosms.Config{BaseURL: ts.URL, DisableCache: false})
 	t1, _ := tk1.Get()
 
 	times++
 
-	tk2 := sms.NewToken(sms.Config{BaseURL: ts.URL})
+	tk2 := gosms.NewToken(gosms.Config{BaseURL: ts.URL})
 	t2, _ := tk2.Get()
 
 	if t1 != t2 {
@@ -230,7 +230,7 @@ func TestGetTokenShouldHandlerRaceCondition(t *testing.T) {
 	wg.Add(10)
 	for i := 0; i < 10; i++ {
 		go func() {
-			tk := sms.NewToken(sms.Config{BaseURL: ts.URL, DisableCache: true})
+			tk := gosms.NewToken(gosms.Config{BaseURL: ts.URL, DisableCache: true})
 			_, _ = tk.Get()
 			wg.Done()
 		}()
@@ -249,7 +249,7 @@ func TestBulkSMS_SendVerificationCodeShouldUseAppropriateHeaders(t *testing.T) {
 	defer ts.Close()
 
 	token := createFakeToken(fakeToken)
-	c := sms.NewBulkSMSClient(token, ts.URL)
+	c := gosms.NewBulkSMSClient(token, ts.URL)
 	_, _ = c.SendVerificationCode("", "")
 	if gotToken != fakeToken {
 		t.Errorf("expected '%s', got '%s'", fakeToken, gotToken)
@@ -267,7 +267,7 @@ func TestBulkSMS_SendVerificationCodeShouldUseAppropriateURL(t *testing.T) {
 	defer ts.Close()
 
 	token := createFakeToken("")
-	c := sms.NewBulkSMSClient(token, ts.URL)
+	c := gosms.NewBulkSMSClient(token, ts.URL)
 	_, _ = c.SendVerificationCode("", "")
 	if strings.ToLower(got) != "/verificationcode" {
 		t.Errorf("expected '%s', got '%s'", "/VerificationCode", got)
@@ -290,7 +290,7 @@ func TestBulkSMS_SendVerificationCodeShouldHasBody(t *testing.T) {
 	defer ts.Close()
 
 	token := createFakeToken("")
-	c := sms.NewBulkSMSClient(token, ts.URL)
+	c := gosms.NewBulkSMSClient(token, ts.URL)
 	_, _ = c.SendVerificationCode(mobile, code)
 
 	if d.MobileNumber != mobile {
@@ -339,7 +339,7 @@ func TestBulkSMS_SendVerificationCodeShouldReturnErrorForFailedRequests(t *testi
 
 	for _, d := range td {
 		t.Run(d.mobile, func(t *testing.T) {
-			c := sms.NewBulkSMSClient(createFakeToken("fake_token"), ts.URL)
+			c := gosms.NewBulkSMSClient(createFakeToken("fake_token"), ts.URL)
 			vId, err := c.SendVerificationCode(d.mobile, "fake_code")
 			if vId != d.vId || (err != nil && err.Error() != d.error.Error()) {
 				t.Error(d.message)
@@ -359,7 +359,7 @@ func TestBulkSMS_SendByTemplateShouldHasRequiredHeaders(t *testing.T) {
 	defer ts.Close()
 
 	token := createFakeToken(fakeToken)
-	c := sms.NewBulkSMSClient(token, ts.URL)
+	c := gosms.NewBulkSMSClient(token, ts.URL)
 	_, _ = c.SendByTemplate("", 0, nil)
 	if gotToken != fakeToken {
 		t.Errorf("expected '%s', got '%s'", fakeToken, gotToken)
@@ -391,7 +391,7 @@ func TestBulkSMS_SendByTemplateShouldSendsRequestBody(t *testing.T) {
 	defer ts.Close()
 
 	token := createFakeToken("fake_token")
-	c := sms.NewBulkSMSClient(token, ts.URL)
+	c := gosms.NewBulkSMSClient(token, ts.URL)
 	_, _ = c.SendByTemplate(mobile, templateId, params)
 
 	if d.Mobile != mobile {

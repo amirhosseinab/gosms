@@ -1,1 +1,3 @@
-module "github.com/amirhosseinab/go-sms-ir"
+module github.com/amirhosseinab/gosms
+
+go 1.12

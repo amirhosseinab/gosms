@@ -1,12 +1,12 @@
-package sms_test
+package gosms_test
 
-import "github.com/amirhosseinab/go-sms-ir/sms"
+import "github.com/amirhosseinab/gosms"
 
 type fakeToken struct {
 	token string
 }
 
-func createFakeToken(token string) sms.TokenProvider {
+func createFakeToken(token string) gosms.TokenProvider {
 	return &fakeToken{token: token}
 }
 func (t *fakeToken) Get() (string, error) {
